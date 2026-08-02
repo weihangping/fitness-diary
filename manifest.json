@@ -1,0 +1,25 @@
+{
+    "name": "健身打卡 · 可爱健身日记",
+    "short_name": "健身打卡",
+    "description": "记录每日健身打卡和体重变化，可爱清新风",
+    "start_url": "./",
+    "scope": "./",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#FBF7F7",
+    "theme_color": "#D9BEBE",
+    "icons": [
+        {
+            "src": "icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

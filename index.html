@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#D9BEBE">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="健身打卡">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="stylesheet" href="css/style.css">
+    <title>健身打卡 · 可爱健身日记</title>
+</head>
+
+<body>
+    <div id="app">
+        <!-- 顶部用户信息 -->
+        <header class="header">
+            <div class="user-info">
+                <div class="avatar" id="avatar">🐱</div>
+                <div class="user-text">
+                    <div class="nickname" id="nickname">健身小可爱</div>
+                    <div class="goal-text">目标体重 <span id="goalWeightDisplay">--</span></div>
+                </div>
+                <button class="settings-btn" id="settingsBtn">⚙️</button>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- 今日打卡卡片 -->
+            <section class="card checkin-card" id="checkinCard">
+                <div class="checkin-header">
+                    <div class="checkin-date" id="todayDate"></div>
+                    <div class="streak-badge">
+                        <span class="flame">🔥</span>
+                        <span id="streakDays">0</span>天连击
+                    </div>
+                </div>
+                <button class="checkin-btn" id="checkinBtn">
+                    <span class="checkin-text">今日打卡</span>
+                    <span class="checkin-subtext">坚持就是胜利！</span>
+                </button>
+            </section>
+
+            <!-- 体重记录卡片 -->
+            <section class="card weight-card">
+                <div class="card-title">
+                    <span>⚖️ 体重记录</span>
+                    <span class="unit-toggle">
+                        <button class="unit-btn active" data-unit="jin" id="unitJin">斤</button>
+                        <button class="unit-btn" data-unit="kg" id="unitKg">kg</button>
+                    </span>
+                </div>
+                <div class="weight-input-row">
+                    <input type="number" class="weight-input" id="weightInput" placeholder="输入今日体重" step="0.1">
+                    <span class="weight-unit" id="weightUnitLabel">斤</span>
+                    <button class="save-weight-btn" id="saveWeightBtn">记录</button>
+                </div>
+                <div class="weight-comparison" id="weightComparison">
+                    <span class="comparison-icon">📊</span>
+                    <span class="comparison-text">快记录今天的体重吧~</span>
+                </div>
+            </section>
+
+            <!-- 月历视图 -->
+            <section class="card calendar-card">
+                <div class="calendar-header">
+                    <button class="month-nav" id="prevMonth">‹</button>
+                    <span class="calendar-title" id="calendarTitle"></span>
+                    <button class="month-nav" id="nextMonth">›</button>
+                </div>
+                <div class="calendar-weekdays">
+                    <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+                </div>
+                <div class="calendar-grid" id="calendarGrid"></div>
+                <div class="calendar-legend">
+                    <span class="legend-item"><span class="legend-dot checked"></span>已打卡</span>
+                    <span class="legend-item"><span class="legend-dot has-weight"></span>有体重</span>
+                    <span class="legend-item"><span class="legend-dot today"></span>今天</span>
+                </div>
+            </section>
+
+            <!-- 统计面板 -->
+            <section class="card stats-card">
+                <div class="card-title">📊 本月统计</div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="monthCheckinCount">0</div>
+                        <div class="stat-label">打卡天数</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="avgWeight">--</div>
+                        <div class="stat-label">平均体重</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="weightChange">--</div>
+                        <div class="stat-label">体重变化</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="currentStreak">0</div>
+                        <div class="stat-label">连续打卡</div>
+                    </div>
+                </div>
+                <!-- 目标进度条 -->
+                <div class="goal-progress">
+                    <div class="goal-progress-label">
+                        <span>🎯 目标进度</span>
+                        <span id="goalProgressPercent">0%</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" id="progressBarFill" style="width: 0%"></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- 底部导航 -->
+        <nav class="bottom-nav">
+            <button class="nav-btn active" data-page="home">🏠 首页</button>
+            <button class="nav-btn" data-page="stats">📈 统计</button>
+            <button class="nav-btn" data-page="settings">⚙️ 设置</button>
+        </nav>
+
+        <!-- 补签弹窗 -->
+        <div class="modal-overlay" id="backfillModal" style="display:none">
+            <div class="modal">
+                <div class="modal-header">
+                    <span class="modal-title" id="backfillDateTitle">补签记录</span>
+                    <button class="modal-close" id="backfillClose">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="modal-row">
+                        <label>体重 <span class="weight-unit-label" id="modalWeightUnit">斤</span></label>
+                        <input type="number" class="modal-input" id="backfillWeight" placeholder="输入体重" step="0.1">
+                    </div>
+                    <div class="modal-row">
+                        <label>打卡</label>
+                        <div class="modal-checkin-toggle">
+                            <button class="toggle-btn" data-checked="true" id="backfillCheckinToggle">已打卡</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="modal-btn delete-btn" id="backfillDelete" style="display:none">删除</button>
+                    <button class="modal-btn cancel-btn" id="backfillCancel">取消</button>
+                    <button class="modal-btn save-btn" id="backfillSave">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 设置弹窗 -->
+        <div class="modal-overlay" id="settingsModal" style="display:none">
+            <div class="modal">
+                <div class="modal-header">
+                    <span class="modal-title">⚙️ 设置</span>
+                    <button class="modal-close" id="settingsClose">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="modal-row">
+                        <label>头像</label>
+                        <div class="avatar-picker" id="avatarPicker">
+                            <span class="avatar-option active" data-avatar="🐱">🐱</span>
+                            <span class="avatar-option" data-avatar="🐰">🐰</span>
+                            <span class="avatar-option" data-avatar="🐻">🐻</span>
+                            <span class="avatar-option" data-avatar="🦊">🦊</span>
+                            <span class="avatar-option" data-avatar="🐼">🐼</span>
+                            <span class="avatar-option" data-avatar="🐨">🐨</span>
+                        </div>
+                    </div>
+                    <div class="modal-row">
+                        <label>昵称</label>
+                        <input type="text" class="modal-input" id="nicknameInput" placeholder="输入昵称" maxlength="12">
+                    </div>
+                    <div class="modal-row">
+                        <label>目标体重 <span class="weight-unit-label" id="settingsWeightUnit">斤</span></label>
+                        <input type="number" class="modal-input" id="goalWeightInput" placeholder="输入目标体重" step="0.1">
+                    </div>
+                    <div class="modal-row">
+                        <label>初始体重 <span class="weight-unit-label" id="initWeightUnit">斤</span></label>
+                        <input type="number" class="modal-input" id="initWeightInput" placeholder="记录起始体重" step="0.1">
+                    </div>
+                    <div class="modal-row theme-section">
+                        <label>🎨 配色方案</label>
+                        <div class="palette-grid" id="paletteGrid">
+                            <!-- 预设色板：由JS动态注入 -->
+                        </div>
+                        <div class="custom-colors">
+                            <div class="custom-color-row">
+                                <span class="custom-color-label">主色调</span>
+                                <input type="color" class="color-input" id="customPrimary" value="#D9BEBE">
+                            </div>
+                            <div class="custom-color-row">
+                                <span class="custom-color-label">打卡绿</span>
+                                <input type="color" class="color-input" id="customGreen" value="#B0D2B8">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="modal-btn cancel-btn" id="settingsCancel">取消</button>
+                    <button class="modal-btn save-btn" id="settingsSave">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast 提示 -->
+        <div class="toast" id="toast" style="display:none"></div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+
+</html>
