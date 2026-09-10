@@ -100,10 +100,26 @@ const Store = {
             // v2 兼容：补 exerciseNames
             if (!Array.isArray(parsed.exerciseNames)) { parsed.exerciseNames = []; changed = true; }
             // v2 兼容：每条记录补 exercises / note
+            // v3 兼容：训练项旧格式 {name, weight, sets, reps} → 新格式 {name, sets:[{weight,reps}]}
             if (parsed.records) {
                 Object.values(parsed.records).forEach(rec => {
                     if (rec && !Array.isArray(rec.exercises)) { rec.exercises = []; changed = true; }
                     if (rec && typeof rec.note !== 'string') { rec.note = ''; changed = true; }
+                    if (rec && Array.isArray(rec.exercises)) {
+                        let migrated = false;
+                        rec.exercises = rec.exercises.map(ex => {
+                            if (ex && ex.sets !== undefined && !Array.isArray(ex.sets)) {
+                                migrated = true;
+                                const oldSets = ex.sets || 1;
+                                const w = ex.weight != null ? ex.weight : null;
+                                const r = ex.reps != null ? ex.reps : null;
+                                const sets = Array.from({ length: Math.max(1, oldSets) }, () => ({ weight: w, reps: r }));
+                                return { name: ex.name || '', sets };
+                            }
+                            return ex;
+                        });
+                        if (migrated) changed = true;
+                    }
                 });
             }
             if (changed) this.save(parsed);
@@ -760,8 +776,11 @@ const App = {
         this.state.backfillCheckin = rec.checked || false;
         this.updateBackfillToggle();
 
-        // 训练项
-        this.state.tempExercises = (rec.exercises || []).map(e => ({ ...e }));
+        // 训练项（深拷贝 sets，避免直接修改原记录）
+        this.state.tempExercises = (rec.exercises || []).map(e => ({
+            name: e.name || '',
+            sets: (e.sets || []).map(s => ({ weight: s.weight != null ? s.weight : null, reps: s.reps != null ? s.reps : null })),
+        }));
         this.renderExerciseList();
 
         // 删除按钮
@@ -780,51 +799,56 @@ const App = {
             list.innerHTML = '<div class="exercise-empty">暂无训练项，点击下方添加</div>';
             return;
         }
-        list.innerHTML = items.map((ex, i) => {
-            const opts = names.map(n => `<option value="${n}"${n === ex.name ? ' selected' : ''}>${n}</option>`).join('');
+        // 共享的项目名候选列表（所有项目名输入框共用一个 datalist）
+        const datalist = `<datalist id="exerciseNameList">${names.map(n => `<option value="${n}">`).join('')}</datalist>`;
+
+        list.innerHTML = datalist + items.map((ex, i) => {
+            const sets = ex.sets || [];
+            const setsHtml = sets.map((s, j) => `
+                <div class="ex-set-row">
+                    <span class="set-badge">组${j + 1}</span>
+                    <input type="number" class="set-weight" data-i="${i}" data-j="${j}" value="${s.weight != null ? s.weight : ''}" step="0.5" placeholder="kg">
+                    <span class="set-x">×</span>
+                    <input type="number" class="set-reps" data-i="${i}" data-j="${j}" value="${s.reps != null ? s.reps : ''}" placeholder="次">
+                    <button class="set-remove-btn" data-i="${i}" data-j="${j}" title="删除本组">✕</button>
+                </div>
+            `).join('');
             return `<div class="exercise-item">
                 <div class="ex-name-row">
-                    <select class="ex-name-select" data-i="${i}">
-                        <option value="">选择项目</option>
-                        ${opts}
-                    </select>
-                    <input type="text" class="ex-name-input" data-i="${i}" placeholder="项目名" value="${ex.name || ''}" style="display:none">
-                    <button class="ex-remove-btn" data-i="${i}">✕</button>
+                    <input type="text" class="ex-name-input" list="exerciseNameList" data-i="${i}" placeholder="项目名（输入或选择已有）" value="${ex.name || ''}">
+                    <button class="ex-remove-btn" data-i="${i}" title="删除该项目">✕</button>
                 </div>
-                <div class="ex-fields">
-                    <label><span>重量kg</span><input type="number" class="ex-weight" data-i="${i}" value="${ex.weight || ''}" step="0.5" placeholder="选填"></label>
-                    <label><span>组</span><input type="number" class="ex-sets" data-i="${i}" value="${ex.sets || ''}" placeholder="选填"></label>
-                    <label><span>次</span><input type="number" class="ex-reps" data-i="${i}" value="${ex.reps || ''}" placeholder="选填"></label>
-                </div>
+                <div class="ex-sets-list">${setsHtml}</div>
+                <button class="add-set-btn" data-i="${i}">+ 添加一组</button>
             </div>`;
         }).join('');
 
-        // 绑定 select 切换：选了已有项目则隐藏输入框，否则显示输入框
-        list.querySelectorAll('.ex-name-select').forEach(sel => {
-            sel.addEventListener('change', () => {
-                const i = +sel.dataset.i;
-                const inp = list.querySelector(`.ex-name-input[data-i="${i}"]`);
-                if (sel.value) {
-                    this.state.tempExercises[i].name = sel.value;
-                    inp.style.display = 'none';
-                } else {
-                    inp.style.display = '';
-                    this.state.tempExercises[i].name = inp.value;
-                }
-            });
-        });
+        // 项目名输入（可直接输入新项目，也可从已有中选择）
         list.querySelectorAll('.ex-name-input').forEach(inp => {
             inp.addEventListener('input', () => { this.state.tempExercises[+inp.dataset.i].name = inp.value; });
         });
-        list.querySelectorAll('.ex-weight').forEach(inp => inp.addEventListener('input', () => {
-            const v = inp.value; this.state.tempExercises[+inp.dataset.i].weight = v === '' ? null : parseFloat(v);
+        // 每组重量
+        list.querySelectorAll('.set-weight').forEach(inp => inp.addEventListener('input', () => {
+            const v = inp.value;
+            this.state.tempExercises[+inp.dataset.i].sets[+inp.dataset.j].weight = v === '' ? null : parseFloat(v);
         }));
-        list.querySelectorAll('.ex-sets').forEach(inp => inp.addEventListener('input', () => {
-            const v = inp.value; this.state.tempExercises[+inp.dataset.i].sets = v === '' ? null : parseInt(v);
+        // 每组次数
+        list.querySelectorAll('.set-reps').forEach(inp => inp.addEventListener('input', () => {
+            const v = inp.value;
+            this.state.tempExercises[+inp.dataset.i].sets[+inp.dataset.j].reps = v === '' ? null : parseInt(v);
         }));
-        list.querySelectorAll('.ex-reps').forEach(inp => inp.addEventListener('input', () => {
-            const v = inp.value; this.state.tempExercises[+inp.dataset.i].reps = v === '' ? null : parseInt(v);
+        // 删除某组
+        list.querySelectorAll('.set-remove-btn').forEach(btn => btn.addEventListener('click', () => {
+            const i = +btn.dataset.i, j = +btn.dataset.j;
+            this.state.tempExercises[i].sets.splice(j, 1);
+            this.renderExerciseList();
         }));
+        // 添加一组
+        list.querySelectorAll('.add-set-btn').forEach(btn => btn.addEventListener('click', () => {
+            this.state.tempExercises[+btn.dataset.i].sets.push({ weight: null, reps: null });
+            this.renderExerciseList();
+        }));
+        // 删除整个项目
         list.querySelectorAll('.ex-remove-btn').forEach(btn => btn.addEventListener('click', () => {
             this.state.tempExercises.splice(+btn.dataset.i, 1);
             this.renderExerciseList();
@@ -832,7 +856,7 @@ const App = {
     },
 
     addExerciseItem() {
-        this.state.tempExercises.push({ name: '', weight: null, sets: null, reps: null });
+        this.state.tempExercises.push({ name: '', sets: [{ weight: null, reps: null }] });
         this.renderExerciseList();
     },
 
@@ -860,14 +884,14 @@ const App = {
 
         data.records[dateStr].checked = this.state.backfillCheckin;
 
-        // 训练项：过滤掉没有项目名的
-        const validEx = this.state.tempExercises.filter(e => e.name && e.name.trim());
-        data.records[dateStr].exercises = validEx.map(e => ({
-            name: e.name.trim(),
-            weight: e.weight || null,
-            sets: e.sets || null,
-            reps: e.reps || null,
-        }));
+        // 训练项：过滤没有项目名的；每组过滤掉重量和次数都为空的
+        const validEx = this.state.tempExercises
+            .filter(e => e.name && e.name.trim())
+            .map(e => ({
+                name: e.name.trim(),
+                sets: (e.sets || []).filter(s => s.weight != null || s.reps != null),
+            }));
+        data.records[dateStr].exercises = validEx;
         // 把新项目名加入常用库
         validEx.forEach(e => {
             if (e.name && !data.exerciseNames.includes(e.name)) data.exerciseNames.push(e.name);
@@ -908,7 +932,7 @@ const App = {
         document.getElementById('newExerciseName').value = '';
         this.closeModal('newExerciseModal');
         // 重新渲染训练列表并新增一项
-        this.state.tempExercises.push({ name, weight: null, sets: null, reps: null });
+        this.state.tempExercises.push({ name, sets: [{ weight: null, reps: null }] });
         this.renderExerciseList();
         showToast(`已添加项目：${name}`);
     },

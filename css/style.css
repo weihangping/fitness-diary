@@ -1096,10 +1096,11 @@ body,
 .ex-name-select,
 .ex-name-input {
     flex: 1;
-    padding: 8px 10px;
+    padding: 10px 12px;
     border: 1.5px solid var(--pink-light);
-    border-radius: 8px;
-    font-size: 13px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
     color: var(--text-dark);
     background: var(--white);
     outline: none;
@@ -1110,9 +1111,15 @@ body,
     border-color: var(--pink);
 }
 
+.ex-name-input::placeholder {
+    font-weight: 400;
+    color: var(--text-light);
+    font-size: 13px;
+}
+
 .ex-remove-btn {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     border: none;
     background: rgba(224, 160, 160, 0.15);
     border-radius: 50%;
@@ -1127,34 +1134,100 @@ body,
     transform: scale(0.9);
 }
 
-.ex-fields {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-}
-
-.ex-fields label {
+/* === 多组数据 === */
+.ex-sets-list {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    font-size: 11px;
-    color: var(--text-light);
-    margin-bottom: 0;
+    gap: 6px;
+    margin-bottom: 8px;
 }
 
-.ex-fields input {
-    padding: 8px;
-    border: 1.5px solid var(--pink-light);
+.ex-set-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--white);
     border-radius: 8px;
+    padding: 6px 8px;
+}
+
+.set-badge {
+    flex-shrink: 0;
+    width: 36px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--pink);
+    color: var(--white);
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.set-weight,
+.set-reps {
+    flex: 1;
+    padding: 6px 8px;
+    border: 1.5px solid var(--pink-light);
+    border-radius: 6px;
     font-size: 13px;
     color: var(--text-dark);
     background: var(--white);
     outline: none;
-    width: 100%;
+    text-align: center;
+    min-width: 0;
 }
 
-.ex-fields input:focus {
+.set-weight:focus,
+.set-reps:focus {
     border-color: var(--pink);
+}
+
+.set-x {
+    color: var(--text-light);
+    font-size: 13px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.set-remove-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    border-radius: 50%;
+    font-size: 11px;
+    color: var(--text-light);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.set-remove-btn:active {
+    background: rgba(224, 160, 160, 0.15);
+    color: var(--red);
+}
+
+.add-set-btn {
+    width: 100%;
+    padding: 8px;
+    border: 1.5px dashed var(--pink-light);
+    background: var(--white);
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--pink);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.add-set-btn:active {
+    background: var(--pink-bg);
+    transform: scale(0.98);
 }
 
 /* === 备注文本框 === */
