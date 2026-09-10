@@ -1,67 +1,26 @@
 /* ============================================
-   健身打卡 · 可爱健身日记
+   健身打卡 · 可爱健身日记 v2
    数据存储 + 业务逻辑 + UI 渲染 + 主题调色盘
+   新增：训练记录、备注、统计维度、体重曲线
    ============================================ */
 
 // ====== 主题预设 ======
 
 const THEME_PRESETS = [
-    {
-        id: 'dusty_rose',
-        name: '🌸 皮粉',
-        primary: '#D9BEBE',      // 主色
-        green: '#B0D2B8',         // 打卡绿
-        red: '#E0A0A0',           // 涨秤红
-    },
-    {
-        id: 'matcha',
-        name: '🍵 奶绿',
-        primary: '#B8CCC0',
-        green: '#9DC9A8',
-        red: '#D8A89E',
-    },
-    {
-        id: 'sky_blue',
-        name: '🌊 浅蓝',
-        primary: '#BEC9D9',
-        green: '#A9D1CF',
-        red: '#D9A8B0',
-    },
-    {
-        id: 'lavender',
-        name: '💜 薰衣草',
-        primary: '#C9BEDE',
-        green: '#BEB6D9',
-        red: '#D9A8B5',
-    },
-    {
-        id: 'cream_apricot',
-        name: '🍊 奶杏',
-        primary: '#DCC2A8',
-        green: '#C9C69E',
-        red: '#D9A98A',
-    },
-    {
-        id: 'peach',
-        name: '🌷 蜜桃',
-        primary: '#E0C4C9',
-        green: '#B5CCBB',
-        red: '#D9A8B1',
-    },
+    { id: 'dusty_rose', name: '🌸 皮粉', primary: '#D9BEBE', green: '#B0D2B8', red: '#E0A0A0' },
+    { id: 'matcha', name: '🍵 奶绿', primary: '#B8CCC0', green: '#9DC9A8', red: '#D8A89E' },
+    { id: 'sky_blue', name: '🌊 浅蓝', primary: '#BEC9D9', green: '#A9D1CF', red: '#D9A8B0' },
+    { id: 'lavender', name: '💜 薰衣草', primary: '#C9BEDE', green: '#BEB6D9', red: '#D9A8B5' },
+    { id: 'cream_apricot', name: '🍊 奶杏', primary: '#DCC2A8', green: '#C9C69E', red: '#D9A98A' },
+    { id: 'peach', name: '🌷 蜜桃', primary: '#E0C4C9', green: '#B5CCBB', red: '#D9A8B1' },
 ];
 
 // ====== 颜色工具 ======
 
 function hexToRgb(hex) {
     const h = hex.replace('#', '');
-    const n = h.length === 3
-        ? h.split('').map(c => c + c).join('')
-        : h;
-    return {
-        r: parseInt(n.slice(0, 2), 16),
-        g: parseInt(n.slice(2, 4), 16),
-        b: parseInt(n.slice(4, 6), 16),
-    };
+    const n = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+    return { r: parseInt(n.slice(0, 2), 16), g: parseInt(n.slice(2, 4), 16), b: parseInt(n.slice(4, 6), 16) };
 }
 
 function rgbToHex({ r, g, b }) {
@@ -69,43 +28,21 @@ function rgbToHex({ r, g, b }) {
     return `#${f(r)}${f(g)}${f(b)}`;
 }
 
-/**
- * 与白色按比例混合（明度提升）
- * @param {string} hex 基准色
- * @param {number} ratio 0 保持原色, 1 纯白
- */
 function mixWithWhite(hex, ratio) {
     const c = hexToRgb(hex);
-    return rgbToHex({
-        r: c.r + (255 - c.r) * ratio,
-        g: c.g + (255 - c.g) * ratio,
-        b: c.b + (255 - c.b) * ratio,
-    });
+    return rgbToHex({ r: c.r + (255 - c.r) * ratio, g: c.g + (255 - c.g) * ratio, b: c.b + (255 - c.b) * ratio });
 }
 
-/**
- * 按「主色 + 打卡绿 + 涨秤红」推导完整 CSS 变量集
- */
 function buildThemeVars({ primary, green, red }) {
-    // 红/橙/紫保持原色系倾向，明度与原风格一致
-    const orange = rgbToHex({
-        r: Math.round((hexToRgb(primary).r + hexToRgb(red).r) / 2 + 10),
-        g: Math.round((hexToRgb(primary).g + hexToRgb(red).g) / 2 + 20),
-        b: Math.round(hexToRgb(primary).b - 10),
-    });
-    const purple = rgbToHex({
-        r: Math.round((hexToRgb(primary).r + hexToRgb(primary).b) / 2),
-        g: Math.round(hexToRgb(primary).g - 8),
-        b: Math.round((hexToRgb(primary).r + hexToRgb(primary).b) / 2 + 20),
-    });
-    // 取主色的 RGB 用于阴影 alpha
     const pRgb = hexToRgb(primary);
-
+    const rRgb = hexToRgb(red);
+    const orange = rgbToHex({ r: Math.min(255, pRgb.r + 10), g: Math.min(255, pRgb.g + 20), b: Math.max(0, pRgb.b - 10) });
+    const purple = rgbToHex({ r: Math.round((pRgb.r + pRgb.b) / 2), g: Math.max(0, pRgb.g - 8), b: Math.min(255, (pRgb.r + pRgb.b) / 2 + 20) });
     return {
         '--pink': primary,
-        '--pink-light': mixWithWhite(primary, 0.55),  // 边框色
-        '--pink-bg': mixWithWhite(primary, 0.9),      // 卡片背景灰
-        '--pink-soft': mixWithWhite(primary, 0.75),   // 中灰
+        '--pink-light': mixWithWhite(primary, 0.55),
+        '--pink-bg': mixWithWhite(primary, 0.9),
+        '--pink-soft': mixWithWhite(primary, 0.75),
         '--green': green,
         '--green-light': mixWithWhite(green, 0.6),
         '--red': red,
@@ -125,23 +62,16 @@ function buildThemeVars({ primary, green, red }) {
 function applyThemeVars(vars) {
     const root = document.documentElement;
     Object.entries(vars).forEach(([k, v]) => root.style.setProperty(k, v));
-
-    // body 背景渐变（跟随主色）
     const bg0 = mixWithWhite(vars['--pink'], 0.95);
     const bg1 = mixWithWhite(vars['--pink'], 0.9);
     document.body.style.background = `linear-gradient(180deg, ${bg0} 0%, ${bg1} 100%)`;
-
-    // manifest/theme-color meta 也要同步
     const metaTheme = document.querySelector('meta[name="theme-color"]');
     if (metaTheme) metaTheme.setAttribute('content', vars['--pink']);
 }
 
 function findPresetByColors({ primary, green }) {
-    const match = THEME_PRESETS.find(
-        (p) => p.primary.toLowerCase() === primary.toLowerCase()
-            && p.green.toLowerCase() === green.toLowerCase()
-    );
-    return match ? match.id : null;
+    const m = THEME_PRESETS.find(p => p.primary.toLowerCase() === primary.toLowerCase() && p.green.toLowerCase() === green.toLowerCase());
+    return m ? m.id : null;
 }
 
 // ====== 数据层 ======
@@ -150,38 +80,33 @@ const Store = {
     KEY: 'fitness_diary_data',
 
     defaults() {
-        const defaultPreset = THEME_PRESETS[0];
+        const dp = THEME_PRESETS[0];
         return {
-            profile: {
-                nickname: '健身小可爱',
-                avatar: '🐱',
-                goalWeight: 100,    // 目标体重(斤)
-                initWeight: 120,    // 初始体重(斤)
-                unit: 'jin',        // jin | kg
-            },
-            theme: {
-                primary: defaultPreset.primary,
-                green: defaultPreset.green,
-                red: defaultPreset.red,
-            },
-            records: {}, // { '2026-07-31': { checked: true, weight: 116.5 } }
+            profile: { nickname: '健身小可爱', avatar: '🐱', goalWeight: 100, initWeight: 120, unit: 'jin' },
+            theme: { primary: dp.primary, green: dp.green, red: dp.red },
+            exerciseNames: [],
+            records: {},
         };
     },
 
     load() {
         try {
             const raw = localStorage.getItem(this.KEY);
-            if (!raw) {
-                const d = this.defaults();
-                this.save(d);
-                return d;
-            }
+            if (!raw) { const d = this.defaults(); this.save(d); return d; }
             const parsed = JSON.parse(raw);
-            // 老数据兼容：补上 theme 字段
-            if (!parsed.theme) {
-                parsed.theme = this.defaults().theme;
-                this.save(parsed);
+            let changed = false;
+            // 老数据兼容：补 theme
+            if (!parsed.theme) { parsed.theme = this.defaults().theme; changed = true; }
+            // v2 兼容：补 exerciseNames
+            if (!Array.isArray(parsed.exerciseNames)) { parsed.exerciseNames = []; changed = true; }
+            // v2 兼容：每条记录补 exercises / note
+            if (parsed.records) {
+                Object.values(parsed.records).forEach(rec => {
+                    if (rec && !Array.isArray(rec.exercises)) { rec.exercises = []; changed = true; }
+                    if (rec && typeof rec.note !== 'string') { rec.note = ''; changed = true; }
+                });
             }
+            if (changed) this.save(parsed);
             return parsed;
         } catch (e) {
             console.error('Load data error:', e);
@@ -199,13 +124,8 @@ const Store = {
         return this._cache;
     },
 
-    update(fn) {
-        const data = this.get();
-        fn(data);
-        this.save(data);
-    },
+    update(fn) { const data = this.get(); fn(data); this.save(data); },
 
-    // 体重单位换算
     toDisplay(weightJin, unit) {
         if (weightJin == null) return null;
         return unit === 'kg' ? +(weightJin / 2).toFixed(1) : +weightJin.toFixed(1);
@@ -215,14 +135,34 @@ const Store = {
         if (weightDisplay == null || weightDisplay === '') return null;
         return unit === 'kg' ? +(weightDisplay * 2).toFixed(1) : +weightDisplay.toFixed(1);
     },
+
+    /** 获取最新一条有体重的记录 {date, weight}，没有则 null */
+    getLatestWeightRecord(records) {
+        const dates = Object.keys(records).filter(d => records[d] && records[d].weight != null).sort();
+        if (dates.length === 0) return null;
+        const d = dates[dates.length - 1];
+        return { date: d, weight: records[d].weight };
+    },
+
+    /** 按时间范围筛选有体重的记录（含端点） */
+    getWeightRecordsInRange(records, startDate, endDate) {
+        return Object.keys(records)
+            .filter(d => d >= startDate && d <= endDate && records[d] && records[d].weight != null)
+            .sort()
+            .map(d => ({ date: d, weight: records[d].weight }));
+    },
+
+    /** 按范围统计打卡数 */
+    getCheckinCountInRange(records, startDate, endDate) {
+        return Object.keys(records)
+            .filter(d => d >= startDate && d <= endDate && records[d] && records[d].checked)
+            .length;
+    },
 };
 
 // ====== 工具函数 ======
 
-function todayStr() {
-    const d = new Date();
-    return fmtDate(d);
-}
+function todayStr() { return fmtDate(new Date()); }
 
 function fmtDate(d) {
     const y = d.getFullYear();
@@ -231,24 +171,52 @@ function fmtDate(d) {
     return `${y}-${m}-${day}`;
 }
 
-function parseDate(str) {
-    const [y, m, d] = str.split('-').map(Number);
-    return new Date(y, m - 1, d);
-}
+function parseDate(str) { const [y, m, d] = str.split('-').map(Number); return new Date(y, m - 1, d); }
 
+/** 从今天往回数的连续打卡天数（支持跨月，补签后实时更新） */
 function getStreak(records) {
     let streak = 0;
     const d = new Date();
+    // 如果今天还没打卡，从昨天开始算
+    const todayKey = fmtDate(d);
+    if (!(records[todayKey] && records[todayKey].checked)) {
+        d.setDate(d.getDate() - 1);
+    }
     while (true) {
         const key = fmtDate(d);
         if (records[key] && records[key].checked) {
             streak++;
             d.setDate(d.getDate() - 1);
-        } else {
-            break;
-        }
+        } else break;
     }
     return streak;
+}
+
+/** 计算指定维度的统计数据 */
+function calcStats(records, dim, viewDate) {
+    const y = viewDate.getFullYear();
+    const m = viewDate.getMonth();
+    let start, end, label;
+    if (dim === 'month') {
+        start = fmtDate(new Date(y, m, 1));
+        end = fmtDate(new Date(y, m + 1, 0));
+        label = `${y}年${m + 1}月`;
+    } else if (dim === 'year') {
+        start = fmtDate(new Date(y, 0, 1));
+        end = fmtDate(new Date(y, 11, 31));
+        label = `${y}年`;
+    } else {
+        const dates = Object.keys(records).filter(d => records[d]).sort();
+        if (dates.length === 0) { start = todayStr(); end = todayStr(); }
+        else { start = dates[0]; end = dates[dates.length - 1]; }
+        label = '全部';
+    }
+    const weights = Store.getWeightRecordsInRange(records, start, end);
+    const checkinCount = Store.getCheckinCountInRange(records, start, end);
+    const avgWeight = weights.length > 0 ? weights.reduce((s, w) => s + w.weight, 0) / weights.length : null;
+    const weightChange = weights.length >= 2 ? +(weights[weights.length - 1].weight - weights[0].weight).toFixed(1) : null;
+    const streak = getStreak(records);
+    return { start, end, label, weights, checkinCount, avgWeight, weightChange, streak };
 }
 
 function showToast(msg) {
@@ -256,9 +224,7 @@ function showToast(msg) {
     toast.textContent = msg;
     toast.style.display = 'block';
     clearTimeout(showToast._t);
-    showToast._t = setTimeout(() => {
-        toast.style.display = 'none';
-    }, 2200);
+    showToast._t = setTimeout(() => { toast.style.display = 'none'; }, 2200);
 }
 
 // ====== UI 渲染 ======
@@ -269,31 +235,23 @@ const App = {
         selectedDate: null,
         selectedAvatar: '🐱',
         backfillCheckin: false,
-        // 调色盘临时状态（打开设置弹窗时使用，保存才落盘）
-        theme: null,     // { primary, green, red }
-        presetId: null,  // 当前匹配的预设 id
+        theme: null,
+        presetId: null,
+        currentPage: 'home',
+        statsDim: 'month',
+        tempExercises: [],   // 补签弹窗中临时训练项
     },
 
     init() {
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').catch(() => {});
-        }
-
-        // 先应用保存的主题
+        if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
         this.applyStoredTheme();
-
         this.bindEvents();
         this.render();
     },
 
     // ===== 主题 =====
+    applyStoredTheme() { applyThemeVars(buildThemeVars(Store.get().theme)); },
 
-    applyStoredTheme() {
-        const t = Store.get().theme;
-        applyThemeVars(buildThemeVars(t));
-    },
-
-    /** 预览/应用临时主题（用于设置弹窗中实时预览） */
     applyTempTheme() {
         const t = this.state.theme;
         if (!t) return;
@@ -303,83 +261,58 @@ const App = {
         this.syncCustomColorInputs();
     },
 
-    /** 渲染调色盘预设卡片列表 */
     renderPaletteGrid() {
         const grid = document.getElementById('paletteGrid');
         const activeId = this.state.presetId;
         grid.innerHTML = THEME_PRESETS.map(p => {
             const vars = buildThemeVars({ primary: p.primary, green: p.green, red: p.red });
-            const swatches = [vars['--pink'], vars['--green-light'], vars['--pink-bg']];
-            const swatchesHtml = swatches.map(c => `<span class="palette-swatch" style="background:${c}"></span>`).join('');
-            const activeClass = p.id === activeId ? ' active' : '';
-            return `<div class="palette-item${activeClass}" data-preset="${p.id}">
-                <div class="palette-preview">${swatchesHtml}</div>
-                <div class="palette-name">${p.name}</div>
-            </div>`;
+            const sw = [vars['--pink'], vars['--green-light'], vars['--pink-bg']];
+            const sh = sw.map(c => `<span class="palette-swatch" style="background:${c}"></span>`).join('');
+            const ac = p.id === activeId ? ' active' : '';
+            return `<div class="palette-item${ac}" data-preset="${p.id}"><div class="palette-preview">${sh}</div><div class="palette-name">${p.name}</div></div>`;
         }).join('');
-
-        // 绑定点击
         grid.querySelectorAll('.palette-item').forEach(el => {
             el.addEventListener('click', () => {
-                const pid = el.dataset.preset;
-                const preset = THEME_PRESETS.find(p => p.id === pid);
-                if (!preset) return;
-                this.state.theme = {
-                    primary: preset.primary,
-                    green: preset.green,
-                    red: preset.red,
-                };
+                const p = THEME_PRESETS.find(x => x.id === el.dataset.preset);
+                if (!p) return;
+                this.state.theme = { primary: p.primary, green: p.green, red: p.red };
                 this.applyTempTheme();
             });
         });
     },
 
     highlightActivePalette() {
-        const activeId = this.state.presetId;
-        document.querySelectorAll('.palette-item').forEach(el => {
-            el.classList.toggle('active', el.dataset.preset === activeId);
-        });
+        const id = this.state.presetId;
+        document.querySelectorAll('.palette-item').forEach(el => el.classList.toggle('active', el.dataset.preset === id));
     },
 
     syncCustomColorInputs() {
         const t = this.state.theme;
         if (!t) return;
-        const primaryInput = document.getElementById('customPrimary');
-        const greenInput = document.getElementById('customGreen');
-        if (primaryInput && primaryInput.value.toLowerCase() !== t.primary.toLowerCase()) {
-            primaryInput.value = t.primary;
-        }
-        if (greenInput && greenInput.value.toLowerCase() !== t.green.toLowerCase()) {
-            greenInput.value = t.green;
-        }
+        const pi = document.getElementById('customPrimary');
+        const gi = document.getElementById('customGreen');
+        if (pi && pi.value.toLowerCase() !== t.primary.toLowerCase()) pi.value = t.primary;
+        if (gi && gi.value.toLowerCase() !== t.green.toLowerCase()) gi.value = t.green;
     },
 
+    // ===== 事件绑定 =====
     bindEvents() {
-        // 打卡
         document.getElementById('checkinBtn').addEventListener('click', () => this.toggleCheckin());
+        document.getElementById('addTodayTraining').addEventListener('click', () => this.openBackfill(todayStr()));
 
-        // 保存体重
         document.getElementById('saveWeightBtn').addEventListener('click', () => this.saveTodayWeight());
-        document.getElementById('weightInput').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') this.saveTodayWeight();
-        });
+        document.getElementById('weightInput').addEventListener('keydown', e => { if (e.key === 'Enter') this.saveTodayWeight(); });
 
-        // 单位切换
-        document.querySelectorAll('.unit-btn').forEach(btn => {
-            btn.addEventListener('click', () => this.switchUnit(btn.dataset.unit));
-        });
+        document.querySelectorAll('.unit-btn').forEach(btn => btn.addEventListener('click', () => this.switchUnit(btn.dataset.unit)));
 
-        // 月份切换
         document.getElementById('prevMonth').addEventListener('click', () => this.changeMonth(-1));
         document.getElementById('nextMonth').addEventListener('click', () => this.changeMonth(1));
 
-        // 设置
         document.getElementById('settingsBtn').addEventListener('click', () => this.openSettings());
         document.getElementById('settingsClose').addEventListener('click', () => this.closeModal('settingsModal'));
         document.getElementById('settingsCancel').addEventListener('click', () => this.closeModal('settingsModal'));
         document.getElementById('settingsSave').addEventListener('click', () => this.saveSettings());
 
-        // 头像选择
         document.querySelectorAll('.avatar-option').forEach(opt => {
             opt.addEventListener('click', () => {
                 document.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('active'));
@@ -388,21 +321,14 @@ const App = {
             });
         });
 
-        // 自定义颜色取色器
-        document.getElementById('customPrimary').addEventListener('input', (e) => {
+        document.getElementById('customPrimary').addEventListener('input', e => {
             if (!this.state.theme) return;
             this.state.theme.primary = e.target.value;
-            // 主色变化时，红也跟着微调，保持色调协调
             const p = hexToRgb(e.target.value);
-            const redHex = rgbToHex({
-                r: Math.min(255, p.r + 10),
-                g: Math.max(0, p.g - 10),
-                b: Math.max(0, p.b - 10),
-            });
-            this.state.theme.red = redHex;
+            this.state.theme.red = rgbToHex({ r: Math.min(255, p.r + 10), g: Math.max(0, p.g - 10), b: Math.max(0, p.b - 10) });
             this.applyTempTheme();
         });
-        document.getElementById('customGreen').addEventListener('input', (e) => {
+        document.getElementById('customGreen').addEventListener('input', e => {
             if (!this.state.theme) return;
             this.state.theme.green = e.target.value;
             this.applyTempTheme();
@@ -414,27 +340,63 @@ const App = {
         document.getElementById('backfillSave').addEventListener('click', () => this.saveBackfill());
         document.getElementById('backfillDelete').addEventListener('click', () => this.deleteBackfill());
         document.getElementById('backfillCheckinToggle').addEventListener('click', () => this.toggleBackfillCheckin());
+        document.getElementById('addExerciseBtn').addEventListener('click', () => this.addExerciseItem());
+
+        // 新增项目弹窗
+        document.getElementById('newExerciseClose').addEventListener('click', () => this.closeModal('newExerciseModal'));
+        document.getElementById('newExerciseCancel').addEventListener('click', () => this.closeModal('newExerciseModal'));
+        document.getElementById('newExerciseSave').addEventListener('click', () => this.saveNewExercise());
+
+        // 统计维度切换
+        document.querySelectorAll('#statsDimTabs .dim-tab').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#statsDimTabs .dim-tab').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.state.statsDim = btn.dataset.dim;
+                this.renderStats();
+            });
+        });
 
         // 底部导航
         document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.addEventListener('click', () => {
+                const page = btn.dataset.page;
+                if (page === 'settings') { this.openSettings(); return; }
                 document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                const page = btn.dataset.page;
-                if (page === 'home') window.scrollTo({ top: 0, behavior: 'smooth' });
-                else if (page === 'stats') {
-                    const el = document.querySelector('.stats-card');
-                    el && el.scrollIntoView({ behavior: 'smooth' });
-                } else if (page === 'settings') this.openSettings();
+                this.switchPage(page);
             });
         });
 
-        // 点击遮罩关闭
+        // 遮罩关闭
         document.querySelectorAll('.modal-overlay').forEach(overlay => {
-            overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) overlay.style.display = 'none';
-            });
+            overlay.addEventListener('click', e => { if (e.target === overlay) overlay.style.display = 'none'; });
         });
+
+        // 图表悬浮
+        const cv = document.getElementById('weightChartCanvas');
+        cv.addEventListener('mousemove', e => this.handleChartHover(e));
+        cv.addEventListener('touchmove', e => { e.preventDefault(); this.handleChartHover(e.touches[0]); }, { passive: false });
+        cv.addEventListener('mouseleave', () => this.hideChartTooltip());
+
+        // 窗口尺寸变化时重绘图表（移动端横竖屏切换）
+        let resizeTimer = null;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                if (this.state.currentPage === 'stats') this.drawWeightChart();
+            }, 150);
+        });
+    },
+
+    switchPage(page) {
+        this.state.currentPage = page;
+        document.getElementById('pageHome').style.display = page === 'home' ? '' : 'none';
+        document.getElementById('pageStats').style.display = page === 'stats' ? '' : 'none';
+        if (page === 'stats') {
+            this.renderStats();
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     },
 
     render() {
@@ -442,34 +404,29 @@ const App = {
         this.renderCheckin();
         this.renderWeightCard();
         this.renderCalendar();
-        this.renderStats();
+        this.renderHomeStats();
+        if (this.state.currentPage === 'stats') {
+            this.renderStats();
+        }
     },
 
-    // === Header ===
     renderHeader() {
-        const data = Store.get();
-        const p = data.profile;
-        const unitLabel = p.unit === 'kg' ? 'kg' : '斤';
+        const p = Store.get().profile;
+        const ul = p.unit === 'kg' ? 'kg' : '斤';
         document.getElementById('avatar').textContent = p.avatar;
         document.getElementById('nickname').textContent = p.nickname;
-        const goalDisplay = Store.toDisplay(p.goalWeight, p.unit);
-        document.getElementById('goalWeightDisplay').textContent = `${goalDisplay}${unitLabel}`;
+        document.getElementById('goalWeightDisplay').textContent = `${Store.toDisplay(p.goalWeight, p.unit)}${ul}`;
     },
 
-    // === 打卡 ===
     renderCheckin() {
         const data = Store.get();
         const today = todayStr();
         const checked = data.records[today] && data.records[today].checked;
         const streak = getStreak(data.records);
-
         const d = new Date();
-        const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-        document.getElementById('todayDate').textContent =
-            `${d.getMonth() + 1}月${d.getDate()}日 ${weekDays[d.getDay()]}`;
-
+        const wd = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+        document.getElementById('todayDate').textContent = `${d.getMonth() + 1}月${d.getDate()}日 ${wd[d.getDay()]}`;
         document.getElementById('streakDays').textContent = streak;
-
         const btn = document.getElementById('checkinBtn');
         if (checked) {
             btn.classList.add('checked', 'pulse');
@@ -486,72 +443,47 @@ const App = {
     toggleCheckin() {
         const data = Store.get();
         const today = todayStr();
-        if (!data.records[today]) data.records[today] = {};
-        const wasChecked = data.records[today].checked || false;
-        data.records[today].checked = !wasChecked;
+        if (!data.records[today]) data.records[today] = { checked: false, weight: null, exercises: [], note: '' };
+        data.records[today].checked = !data.records[today].checked;
         Store.save(data);
-
-        if (data.records[today].checked) {
-            showToast('打卡成功！🎉');
-        } else {
-            showToast('已取消今日打卡');
-        }
+        showToast(data.records[today].checked ? '打卡成功！🎉' : '已取消今日打卡');
         this.render();
     },
 
-    // === 体重 ===
     renderWeightCard() {
         const data = Store.get();
         const p = data.profile;
-        const unitLabel = p.unit === 'kg' ? 'kg' : '斤';
-        document.getElementById('weightUnitLabel').textContent = unitLabel;
-
-        document.querySelectorAll('.unit-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.unit === p.unit);
-        });
-
+        const ul = p.unit === 'kg' ? 'kg' : '斤';
+        document.getElementById('weightUnitLabel').textContent = ul;
+        document.querySelectorAll('.unit-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.unit === p.unit));
         const today = todayStr();
-        const todayRec = data.records[today];
-        const weightInput = document.getElementById('weightInput');
-        if (todayRec && todayRec.weight != null) {
-            weightInput.value = Store.toDisplay(todayRec.weight, p.unit);
-        }
+        const tr = data.records[today];
+        if (tr && tr.weight != null) document.getElementById('weightInput').value = Store.toDisplay(tr.weight, p.unit);
 
-        const compEl = document.getElementById('weightComparison');
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yKey = fmtDate(yesterday);
-        const yRec = data.records[yKey];
-
-        if (todayRec && todayRec.weight != null && yRec && yRec.weight != null) {
-            const diff = +(todayRec.weight - yRec.weight).toFixed(1);
-            const diffDisplay = Store.toDisplay(Math.abs(diff), p.unit);
-            if (diff < 0) {
-                compEl.innerHTML = `<span class="comparison-icon">📉</span> 比昨天 <span class="down">↓${diffDisplay}${unitLabel}</span> 继续保持！`;
-            } else if (diff > 0) {
-                compEl.innerHTML = `<span class="comparison-icon">📈</span> 比昨天 <span class="up">↑${diffDisplay}${unitLabel}</span> 加油加油~`;
-            } else {
-                compEl.innerHTML = `<span class="comparison-icon">➡️</span> 和昨天一样，保持住！`;
-            }
-        } else if (todayRec && todayRec.weight != null) {
-            compEl.innerHTML = `<span class="comparison-icon">✅</span> 今日已记录 ${Store.toDisplay(todayRec.weight, p.unit)}${unitLabel}`;
+        const comp = document.getElementById('weightComparison');
+        const y = new Date(); y.setDate(y.getDate() - 1);
+        const yRec = data.records[fmtDate(y)];
+        if (tr && tr.weight != null && yRec && yRec.weight != null) {
+            const diff = +(tr.weight - yRec.weight).toFixed(1);
+            const d = Store.toDisplay(Math.abs(diff), p.unit);
+            if (diff < 0) comp.innerHTML = `<span class="comparison-icon">📉</span> 比昨天 <span class="down">↓${d}${ul}</span> 继续保持！`;
+            else if (diff > 0) comp.innerHTML = `<span class="comparison-icon">📈</span> 比昨天 <span class="up">↑${d}${ul}</span> 加油加油~`;
+            else comp.innerHTML = `<span class="comparison-icon">➡️</span> 和昨天一样，保持住！`;
+        } else if (tr && tr.weight != null) {
+            comp.innerHTML = `<span class="comparison-icon">✅</span> 今日已记录 ${Store.toDisplay(tr.weight, p.unit)}${ul}`;
         } else {
-            compEl.innerHTML = `<span class="comparison-icon">📊</span> 快记录今天的体重吧~`;
+            comp.innerHTML = `<span class="comparison-icon">📊</span> 快记录今天的体重吧~`;
         }
     },
 
     saveTodayWeight() {
-        const input = document.getElementById('weightInput');
-        const val = parseFloat(input.value);
-        if (isNaN(val) || val <= 0) {
-            showToast('请输入有效体重');
-            return;
-        }
+        const v = parseFloat(document.getElementById('weightInput').value);
+        if (isNaN(v) || v <= 0) { showToast('请输入有效体重'); return; }
         const data = Store.get();
         const p = data.profile;
         const today = todayStr();
-        if (!data.records[today]) data.records[today] = {};
-        data.records[today].weight = Store.toJin(val, p.unit);
+        if (!data.records[today]) data.records[today] = { checked: false, weight: null, exercises: [], note: '' };
+        data.records[today].weight = Store.toJin(v, p.unit);
         Store.save(data);
         showToast('体重记录成功 ⚖️');
         this.render();
@@ -565,59 +497,252 @@ const App = {
         this.render();
     },
 
-    // === 日历 ===
     renderCalendar() {
         const data = Store.get();
         const p = data.profile;
         const vm = this.state.viewMonth;
-        const year = vm.getFullYear();
-        const month = vm.getMonth();
-
+        const year = vm.getFullYear(), month = vm.getMonth();
         document.getElementById('calendarTitle').textContent = `${year}年${month + 1}月`;
-
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         const today = todayStr();
-        const unitLabel = p.unit === 'kg' ? 'kg' : '斤';
+        const ul = p.unit === 'kg' ? 'kg' : '斤';
 
         let html = '';
-        for (let i = 0; i < firstDay; i++) {
-            html += '<div class="cal-day empty"></div>';
-        }
+        for (let i = 0; i < firstDay; i++) html += '<div class="cal-day empty"></div>';
         for (let d = 1; d <= daysInMonth; d++) {
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-            const rec = data.records[dateStr];
-            const classes = ['cal-day'];
-            if (dateStr === today) classes.push('today');
-            if (rec && rec.checked) classes.push('checked');
-            if (rec && rec.weight != null) classes.push('has-weight');
-
-            let weightHtml = '';
-            if (rec && rec.weight != null) {
-                const w = Store.toDisplay(rec.weight, p.unit);
-                weightHtml = `<span class="day-weight">${w}</span>`;
-            }
-
-            html += `<div class="${classes.join(' ')}" data-date="${dateStr}">
-                <span class="day-num">${d}</span>
-                ${weightHtml}
-            </div>`;
+            const ds = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const rec = data.records[ds];
+            const cls = ['cal-day'];
+            if (ds === today) cls.push('today');
+            if (rec && rec.checked) cls.push('checked');
+            if (rec && rec.weight != null) cls.push('has-weight');
+            if (rec && rec.exercises && rec.exercises.length > 0) cls.push('has-train');
+            let wh = '';
+            if (rec && rec.weight != null) wh = `<span class="day-weight">${Store.toDisplay(rec.weight, p.unit)}</span>`;
+            html += `<div class="${cls.join(' ')}" data-date="${ds}"><span class="day-num">${d}</span>${wh}</div>`;
         }
-
         document.getElementById('calendarGrid').innerHTML = html;
-
-        document.querySelectorAll('.cal-day:not(.empty)').forEach(el => {
-            el.addEventListener('click', () => this.openBackfill(el.dataset.date));
-        });
+        document.querySelectorAll('.cal-day:not(.empty)').forEach(el => el.addEventListener('click', () => this.openBackfill(el.dataset.date)));
     },
 
     changeMonth(delta) {
-        const vm = this.state.viewMonth;
-        vm.setMonth(vm.getMonth() + delta);
+        this.state.viewMonth.setMonth(this.state.viewMonth.getMonth() + delta);
         this.renderCalendar();
+        this.renderHomeStats(); // 首页统计跟随日历
     },
 
-    // === 补签 ===
+    // ===== 首页统计（跟随日历当月） =====
+    renderHomeStats() {
+        const data = Store.get();
+        const p = data.profile;
+        const s = calcStats(data.records, 'month', this.state.viewMonth);
+        const ul = p.unit === 'kg' ? 'kg' : '斤';
+
+        const vm = this.state.viewMonth;
+        document.getElementById('homeStatsTitle').textContent = `📊 ${vm.getFullYear()}年${vm.getMonth() + 1}月统计`;
+        document.getElementById('homeCheckinCount').textContent = s.checkinCount;
+        document.getElementById('homeAvgWeight').textContent = s.avgWeight != null ? Store.toDisplay(+s.avgWeight.toFixed(1), p.unit) + ul : '--';
+        if (s.weightChange != null) {
+            const cd = Store.toDisplay(Math.abs(s.weightChange), p.unit);
+            const sign = s.weightChange < 0 ? '-' : s.weightChange > 0 ? '+' : '';
+            document.getElementById('homeWeightChange').textContent = `${sign}${cd}${ul}`;
+        } else document.getElementById('homeWeightChange').textContent = '--';
+        document.getElementById('homeStreak').textContent = s.streak;
+
+        this.renderGoalProgress(data, p, ul);
+    },
+
+    // 总进度：用最新一条体重记录
+    renderGoalProgress(data, p, ul) {
+        const latest = Store.getLatestWeightRecord(data.records);
+        const initW = p.initWeight || p.goalWeight;
+        const currentW = latest ? latest.weight : initW;
+        let progress = 0;
+        if (initW !== p.goalWeight) {
+            const total = Math.abs(initW - p.goalWeight);
+            const done = Math.abs(initW - currentW);
+            // 仅当 currentW 朝目标方向前进时才显示进度
+            const movingTowards = (initW > p.goalWeight) ? currentW <= initW : currentW >= initW;
+            progress = movingTowards ? Math.min(100, (done / total) * 100) : 0;
+        }
+        progress = Math.round(progress);
+        document.getElementById('goalProgressPercent').textContent = progress + '%';
+        document.getElementById('progressBarFill').style.width = progress + '%';
+        // 统计页也同步
+        const p2 = document.getElementById('goalProgressPercent2');
+        if (p2) { p2.textContent = progress + '%'; document.getElementById('progressBarFill2').style.width = progress + '%'; }
+    },
+
+    // ===== 统计页 =====
+    renderStats() {
+        const data = Store.get();
+        const p = data.profile;
+        const s = calcStats(data.records, this.state.statsDim, this.state.viewMonth);
+        const ul = p.unit === 'kg' ? 'kg' : '斤';
+
+        document.getElementById('chartTitle').textContent = `📈 体重曲线 · ${s.label}`;
+        document.getElementById('statsCheckinCount').textContent = s.checkinCount;
+        document.getElementById('statsAvgWeight').textContent = s.avgWeight != null ? Store.toDisplay(+s.avgWeight.toFixed(1), p.unit) + ul : '--';
+        if (s.weightChange != null) {
+            const cd = Store.toDisplay(Math.abs(s.weightChange), p.unit);
+            const sign = s.weightChange < 0 ? '-' : s.weightChange > 0 ? '+' : '';
+            document.getElementById('statsWeightChange').textContent = `${sign}${cd}${ul}`;
+        } else document.getElementById('statsWeightChange').textContent = '--';
+        document.getElementById('statsStreak').textContent = s.streak;
+
+        this.renderGoalProgress(data, p, ul);
+        this.drawWeightChart();
+    },
+
+    // ===== 体重曲线 Canvas =====
+    drawWeightChart() {
+        const data = Store.get();
+        const p = data.profile;
+        const s = calcStats(data.records, this.state.statsDim, this.state.viewMonth);
+        const cv = document.getElementById('weightChartCanvas');
+        if (!cv) return;
+
+        // 页面刚切换时 canvas 可能尚未布局（clientWidth=0），等下一帧再画
+        const W = cv.clientWidth;
+        if (!W || W < 10) {
+            requestAnimationFrame(() => this.drawWeightChart());
+            return;
+        }
+
+        const ctx = cv.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const H = 240;
+        cv.width = W * dpr; cv.height = H * dpr;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, W, H);
+
+        const weights = s.weights;
+        if (weights.length === 0) {
+            ctx.fillStyle = '#B0A6A6';
+            ctx.font = '13px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('暂无体重数据', W / 2, H / 2);
+            this._chartPoints = [];
+            return;
+        }
+
+        const primary = getComputedStyle(document.documentElement).getPropertyValue('--pink').trim() || '#D9BEBE';
+        const gridColor = '#EEE5E5';
+        const textColor = '#8A8080';
+
+        const pad = { l: 40, r: 14, t: 16, b: 26 };
+        const iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
+        const ws = weights.map(w => w.weight);
+        const min = Math.floor(Math.min(...ws) - 1);
+        const max = Math.ceil(Math.max(...ws) + 1);
+        const range = Math.max(1, max - min);
+        const unitSuffix = p.unit === 'kg' ? 'kg' : '斤';
+
+        // 网格 + Y 轴
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+        for (let i = 0; i <= 4; i++) {
+            const y = pad.t + ih * i / 4;
+            const val = max - range * i / 4;
+            ctx.strokeStyle = gridColor; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
+            ctx.fillStyle = textColor;
+            ctx.fillText(Store.toDisplay(+val.toFixed(1), p.unit) + unitSuffix, pad.l - 6, y);
+        }
+
+        // X 轴标签
+        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        const labels = weights.map(w => {
+            const [y, m, d] = w.date.split('-').map(Number);
+            if (this.state.statsDim === 'month') return `${m}/${d}`;
+            if (this.state.statsDim === 'year') return `${m}月`;
+            return `${y}/${m}`;
+        });
+        const step = Math.max(1, Math.floor(weights.length / 6));
+        labels.forEach((lab, i) => {
+            if (i % step === 0 || i === weights.length - 1) {
+                const x = pad.l + iw * i / (weights.length - 1 || 1);
+                ctx.fillStyle = textColor;
+                ctx.fillText(lab, x, H - pad.b + 6);
+            }
+        });
+
+        // 数据点坐标
+        const pts = weights.map((w, i) => ({
+            x: pad.l + iw * i / (weights.length - 1 || 1),
+            y: pad.t + ih * (max - w.weight) / range,
+            data: w,
+        }));
+        this._chartPoints = pts;
+
+        // 渐变填充
+        const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + ih);
+        grad.addColorStop(0, mixWithWhite(primary, 0.6) + 'AA');
+        grad.addColorStop(1, mixWithWhite(primary, 0.9) + '00');
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pad.t + ih);
+        pts.forEach(p2 => ctx.lineTo(p2.x, p2.y));
+        ctx.lineTo(pts[pts.length - 1].x, pad.t + ih);
+        ctx.closePath();
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // 折线
+        ctx.beginPath();
+        pts.forEach((p2, i) => i === 0 ? ctx.moveTo(p2.x, p2.y) : ctx.lineTo(p2.x, p2.y));
+        ctx.strokeStyle = primary;
+        ctx.lineWidth = 2;
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+
+        // 点
+        pts.forEach(p2 => {
+            ctx.beginPath();
+            ctx.arc(p2.x, p2.y, 3, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+            ctx.strokeStyle = primary;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        });
+    },
+
+    handleChartHover(e) {
+        const pts = this._chartPoints;
+        if (!pts || pts.length === 0) return;
+        const cv = document.getElementById('weightChartCanvas');
+        const rect = cv.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        // 找最近的点
+        let nearest = null, minDist = Infinity;
+        pts.forEach(p => {
+            const dx = p.x - x, dy = p.y - y;
+            const d = Math.sqrt(dx * dx + dy * dy);
+            if (d < minDist) { minDist = d; nearest = p; }
+        });
+        const tooltip = document.getElementById('chartTooltip');
+        if (nearest && minDist < 30) {
+            const p = Store.get().profile;
+            const ul = p.unit === 'kg' ? 'kg' : '斤';
+            tooltip.innerHTML = `<strong>${nearest.data.date}</strong><br>体重：${Store.toDisplay(nearest.data.weight, p.unit)}${ul}`;
+            tooltip.style.display = 'block';
+            tooltip.style.left = Math.min(nearest.x + 8, cv.clientWidth - 100) + 'px';
+            tooltip.style.top = Math.max(nearest.y - 40, 0) + 'px';
+        } else {
+            this.hideChartTooltip();
+        }
+    },
+
+    hideChartTooltip() {
+        const t = document.getElementById('chartTooltip');
+        if (t) t.style.display = 'none';
+    },
+
+    // ===== 补签 / 训练 =====
     openBackfill(dateStr) {
         const data = Store.get();
         const p = data.profile;
@@ -625,26 +750,90 @@ const App = {
         this.state.selectedDate = dateStr;
 
         const d = parseDate(dateStr);
-        document.getElementById('backfillDateTitle').textContent =
-            `${d.getMonth() + 1}月${d.getDate()}日 补签`;
+        document.getElementById('backfillDateTitle').textContent = `${d.getMonth() + 1}月${d.getDate()}日 记录`;
+        const ul = p.unit === 'kg' ? 'kg' : '斤';
+        document.getElementById('modalWeightUnit').textContent = ul;
 
-        const unitLabel = p.unit === 'kg' ? 'kg' : '斤';
-        document.getElementById('modalWeightUnit').textContent = unitLabel;
-
-        const weightInput = document.getElementById('backfillWeight');
-        if (rec.weight != null) {
-            weightInput.value = Store.toDisplay(rec.weight, p.unit);
-        } else {
-            weightInput.value = '';
-        }
+        document.getElementById('backfillWeight').value = rec.weight != null ? Store.toDisplay(rec.weight, p.unit) : '';
+        document.getElementById('backfillNote').value = rec.note || '';
 
         this.state.backfillCheckin = rec.checked || false;
         this.updateBackfillToggle();
 
+        // 训练项
+        this.state.tempExercises = (rec.exercises || []).map(e => ({ ...e }));
+        this.renderExerciseList();
+
+        // 删除按钮
         document.getElementById('backfillDelete').style.display =
-            (rec.checked || rec.weight != null) ? 'block' : 'none';
+            (rec.checked || rec.weight != null || (rec.exercises && rec.exercises.length > 0) || rec.note) ? 'block' : 'none';
 
         document.getElementById('backfillModal').style.display = 'flex';
+    },
+
+    renderExerciseList() {
+        const data = Store.get();
+        const names = data.exerciseNames || [];
+        const list = document.getElementById('exerciseList');
+        const items = this.state.tempExercises;
+        if (items.length === 0) {
+            list.innerHTML = '<div class="exercise-empty">暂无训练项，点击下方添加</div>';
+            return;
+        }
+        list.innerHTML = items.map((ex, i) => {
+            const opts = names.map(n => `<option value="${n}"${n === ex.name ? ' selected' : ''}>${n}</option>`).join('');
+            return `<div class="exercise-item">
+                <div class="ex-name-row">
+                    <select class="ex-name-select" data-i="${i}">
+                        <option value="">选择项目</option>
+                        ${opts}
+                    </select>
+                    <input type="text" class="ex-name-input" data-i="${i}" placeholder="项目名" value="${ex.name || ''}" style="display:none">
+                    <button class="ex-remove-btn" data-i="${i}">✕</button>
+                </div>
+                <div class="ex-fields">
+                    <label><span>重量kg</span><input type="number" class="ex-weight" data-i="${i}" value="${ex.weight || ''}" step="0.5" placeholder="选填"></label>
+                    <label><span>组</span><input type="number" class="ex-sets" data-i="${i}" value="${ex.sets || ''}" placeholder="选填"></label>
+                    <label><span>次</span><input type="number" class="ex-reps" data-i="${i}" value="${ex.reps || ''}" placeholder="选填"></label>
+                </div>
+            </div>`;
+        }).join('');
+
+        // 绑定 select 切换：选了已有项目则隐藏输入框，否则显示输入框
+        list.querySelectorAll('.ex-name-select').forEach(sel => {
+            sel.addEventListener('change', () => {
+                const i = +sel.dataset.i;
+                const inp = list.querySelector(`.ex-name-input[data-i="${i}"]`);
+                if (sel.value) {
+                    this.state.tempExercises[i].name = sel.value;
+                    inp.style.display = 'none';
+                } else {
+                    inp.style.display = '';
+                    this.state.tempExercises[i].name = inp.value;
+                }
+            });
+        });
+        list.querySelectorAll('.ex-name-input').forEach(inp => {
+            inp.addEventListener('input', () => { this.state.tempExercises[+inp.dataset.i].name = inp.value; });
+        });
+        list.querySelectorAll('.ex-weight').forEach(inp => inp.addEventListener('input', () => {
+            const v = inp.value; this.state.tempExercises[+inp.dataset.i].weight = v === '' ? null : parseFloat(v);
+        }));
+        list.querySelectorAll('.ex-sets').forEach(inp => inp.addEventListener('input', () => {
+            const v = inp.value; this.state.tempExercises[+inp.dataset.i].sets = v === '' ? null : parseInt(v);
+        }));
+        list.querySelectorAll('.ex-reps').forEach(inp => inp.addEventListener('input', () => {
+            const v = inp.value; this.state.tempExercises[+inp.dataset.i].reps = v === '' ? null : parseInt(v);
+        }));
+        list.querySelectorAll('.ex-remove-btn').forEach(btn => btn.addEventListener('click', () => {
+            this.state.tempExercises.splice(+btn.dataset.i, 1);
+            this.renderExerciseList();
+        }));
+    },
+
+    addExerciseItem() {
+        this.state.tempExercises.push({ name: '', weight: null, sets: null, reps: null });
+        this.renderExerciseList();
     },
 
     toggleBackfillCheckin() {
@@ -653,43 +842,46 @@ const App = {
     },
 
     updateBackfillToggle() {
-        const toggle = document.getElementById('backfillCheckinToggle');
-        if (this.state.backfillCheckin) {
-            toggle.classList.add('active');
-            toggle.textContent = '已打卡 ✓';
-        } else {
-            toggle.classList.remove('active');
-            toggle.textContent = '未打卡';
-        }
+        const t = document.getElementById('backfillCheckinToggle');
+        if (this.state.backfillCheckin) { t.classList.add('active'); t.textContent = '已打卡 ✓'; }
+        else { t.classList.remove('active'); t.textContent = '未打卡'; }
     },
 
     saveBackfill() {
         const dateStr = this.state.selectedDate;
         if (!dateStr) return;
-
         const data = Store.get();
         const p = data.profile;
-        if (!data.records[dateStr]) data.records[dateStr] = {};
+        if (!data.records[dateStr]) data.records[dateStr] = { checked: false, weight: null, exercises: [], note: '' };
 
-        const weightVal = parseFloat(document.getElementById('backfillWeight').value);
-        if (!isNaN(weightVal) && weightVal > 0) {
-            data.records[dateStr].weight = Store.toJin(weightVal, p.unit);
-        } else if (weightVal === 0 || (document.getElementById('backfillWeight').value.trim() === '')) {
-            // 体重输入为空 / 0 时，清除体重字段（但保留打卡状态）
-            delete data.records[dateStr].weight;
-        }
+        const wv = parseFloat(document.getElementById('backfillWeight').value);
+        if (!isNaN(wv) && wv > 0) data.records[dateStr].weight = Store.toJin(wv, p.unit);
+        else delete data.records[dateStr].weight;
 
         data.records[dateStr].checked = this.state.backfillCheckin;
 
-        // 若既没打卡又没体重，则删除这条空记录
+        // 训练项：过滤掉没有项目名的
+        const validEx = this.state.tempExercises.filter(e => e.name && e.name.trim());
+        data.records[dateStr].exercises = validEx.map(e => ({
+            name: e.name.trim(),
+            weight: e.weight || null,
+            sets: e.sets || null,
+            reps: e.reps || null,
+        }));
+        // 把新项目名加入常用库
+        validEx.forEach(e => {
+            if (e.name && !data.exerciseNames.includes(e.name)) data.exerciseNames.push(e.name);
+        });
+
+        data.records[dateStr].note = document.getElementById('backfillNote').value.trim();
+
         const rec = data.records[dateStr];
-        const hasContent = rec.checked || rec.weight != null;
-        if (!hasContent) {
+        if (!rec.checked && rec.weight == null && (!rec.exercises || rec.exercises.length === 0) && !rec.note) {
             delete data.records[dateStr];
         }
 
         Store.save(data);
-        showToast('补签成功 📝');
+        showToast('保存成功 📝');
         this.closeModal('backfillModal');
         this.render();
     },
@@ -705,142 +897,63 @@ const App = {
         this.render();
     },
 
-    // === 统计 ===
-    renderStats() {
+    // ===== 新增训练项目 =====
+    saveNewExercise() {
+        const name = document.getElementById('newExerciseName').value.trim();
+        if (!name) { showToast('请输入项目名称'); return; }
         const data = Store.get();
-        const p = data.profile;
-        const vm = this.state.viewMonth;
-        const year = vm.getFullYear();
-        const month = vm.getMonth();
-        const unitLabel = p.unit === 'kg' ? 'kg' : '斤';
-
-        let checkinCount = 0;
-        let weights = [];
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        for (let d = 1; d <= daysInMonth; d++) {
-            const ds = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-            const rec = data.records[ds];
-            if (rec && rec.checked) checkinCount++;
-            if (rec && rec.weight != null) weights.push({ date: ds, weight: rec.weight });
-        }
-
-        document.getElementById('monthCheckinCount').textContent = checkinCount;
-
-        if (weights.length > 0) {
-            const avg = weights.reduce((s, w) => s + w.weight, 0) / weights.length;
-            document.getElementById('avgWeight').textContent =
-                Store.toDisplay(+avg.toFixed(1), p.unit) + unitLabel;
-        } else {
-            document.getElementById('avgWeight').textContent = '--';
-        }
-
-        if (weights.length >= 2) {
-            const first = weights[0].weight;
-            const last = weights[weights.length - 1].weight;
-            const change = +(last - first).toFixed(1);
-            const changeDisplay = Store.toDisplay(Math.abs(change), p.unit);
-            const sign = change < 0 ? '-' : change > 0 ? '+' : '';
-            document.getElementById('weightChange').textContent =
-                `${sign}${changeDisplay}${unitLabel}`;
-        } else {
-            document.getElementById('weightChange').textContent = '--';
-        }
-
-        const streak = getStreak(data.records);
-        document.getElementById('currentStreak').textContent = streak;
-
-        const today = todayStr();
-        const todayRec = data.records[today];
-        const initW = p.initWeight || p.goalWeight;
-        const currentW = todayRec && todayRec.weight != null ? todayRec.weight : initW;
-        if (initW !== p.goalWeight && currentW !== p.goalWeight) {
-            const totalChange = initW - p.goalWeight;
-            const doneChange = initW - currentW;
-            let progress = Math.min(100, Math.max(0, (doneChange / totalChange) * 100));
-            if (initW < p.goalWeight) {
-                progress = Math.min(100, Math.max(0, (doneChange / totalChange) * 100));
-            }
-            progress = Math.round(progress);
-            document.getElementById('goalProgressPercent').textContent = progress + '%';
-            document.getElementById('progressBarFill').style.width = progress + '%';
-        } else {
-            document.getElementById('goalProgressPercent').textContent = '0%';
-            document.getElementById('progressBarFill').style.width = '0%';
-        }
+        if (data.exerciseNames.includes(name)) { showToast('该项目已存在'); return; }
+        data.exerciseNames.push(name);
+        Store.save(data);
+        document.getElementById('newExerciseName').value = '';
+        this.closeModal('newExerciseModal');
+        // 重新渲染训练列表并新增一项
+        this.state.tempExercises.push({ name, weight: null, sets: null, reps: null });
+        this.renderExerciseList();
+        showToast(`已添加项目：${name}`);
     },
 
-    // === 设置 ===
+    // ===== 设置 =====
     openSettings() {
         const data = Store.get();
         const p = data.profile;
-        const unitLabel = p.unit === 'kg' ? 'kg' : '斤';
-
+        const ul = p.unit === 'kg' ? 'kg' : '斤';
         document.getElementById('nicknameInput').value = p.nickname;
         document.getElementById('goalWeightInput').value = Store.toDisplay(p.goalWeight, p.unit) || '';
         document.getElementById('initWeightInput').value = Store.toDisplay(p.initWeight, p.unit) || '';
-        document.getElementById('settingsWeightUnit').textContent = unitLabel;
-        document.getElementById('initWeightUnit').textContent = unitLabel;
-
-        // 头像
+        document.getElementById('settingsWeightUnit').textContent = ul;
+        document.getElementById('initWeightUnit').textContent = ul;
         this.state.selectedAvatar = p.avatar;
-        document.querySelectorAll('.avatar-option').forEach(opt => {
-            opt.classList.toggle('active', opt.dataset.avatar === p.avatar);
-        });
-
-        // ===== 调色盘 =====
-        // 克隆保存的主题到临时 state
+        document.querySelectorAll('.avatar-option').forEach(opt => opt.classList.toggle('active', opt.dataset.avatar === p.avatar));
         this.state.theme = Object.assign({}, data.theme);
-        // 先渲染列表
         this.renderPaletteGrid();
-        // 应用高亮和输入值
         this.state.presetId = findPresetByColors(this.state.theme);
         this.highlightActivePalette();
         this.syncCustomColorInputs();
-
         document.getElementById('settingsModal').style.display = 'flex';
     },
 
     saveSettings() {
         const data = Store.get();
         const p = data.profile;
-
-        const nickname = document.getElementById('nicknameInput').value.trim() || '健身小可爱';
-        const goalVal = parseFloat(document.getElementById('goalWeightInput').value);
-        const initVal = parseFloat(document.getElementById('initWeightInput').value);
-
-        p.nickname = nickname;
+        p.nickname = document.getElementById('nicknameInput').value.trim() || '健身小可爱';
         p.avatar = this.state.selectedAvatar;
-
-        if (!isNaN(goalVal) && goalVal > 0) {
-            p.goalWeight = Store.toJin(goalVal, p.unit);
-        }
-        if (!isNaN(initVal) && initVal > 0) {
-            p.initWeight = Store.toJin(initVal, p.unit);
-        }
-
-        // 保存主题
-        if (this.state.theme) {
-            data.theme = Object.assign({}, this.state.theme);
-        }
-
+        const gv = parseFloat(document.getElementById('goalWeightInput').value);
+        const iv = parseFloat(document.getElementById('initWeightInput').value);
+        if (!isNaN(gv) && gv > 0) p.goalWeight = Store.toJin(gv, p.unit);
+        if (!isNaN(iv) && iv > 0) p.initWeight = Store.toJin(iv, p.unit);
+        if (this.state.theme) data.theme = Object.assign({}, this.state.theme);
         Store.save(data);
-
-        // 应用最终主题（主要是防止因取消逻辑差异造成不同步）
         this.applyStoredTheme();
-
         showToast('设置已保存 ⚙️');
         this.closeModal('settingsModal');
         this.render();
     },
 
     closeModal(id) {
-        // 如果关闭的是设置弹窗，且用户点击的是遮罩/取消/关闭按钮，则需要恢复存储的主题（预览丢弃）
-        if (id === 'settingsModal') {
-            this.applyStoredTheme();
-        }
+        if (id === 'settingsModal') this.applyStoredTheme();
         document.getElementById(id).style.display = 'none';
     },
 };
 
-// === 启动 ===
 document.addEventListener('DOMContentLoaded', () => App.init());

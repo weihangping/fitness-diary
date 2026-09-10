@@ -1,10 +1,12 @@
-const CACHE_NAME = 'fitness-diary-v1';
+const CACHE_NAME = 'fitness-diary-v2';
 const CACHE_ASSETS = [
     './',
     './index.html',
     './css/style.css',
     './js/app.js',
-    './manifest.json'
+    './manifest.json',
+    './icons/icon-192.png',
+    './icons/icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {

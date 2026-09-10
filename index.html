@@ -28,7 +28,8 @@
             </div>
         </header>
 
-        <main class="main-content">
+        <!-- ============ 首页 ============ -->
+        <main class="main-content page-home" id="pageHome">
             <!-- 今日打卡卡片 -->
             <section class="card checkin-card" id="checkinCard">
                 <div class="checkin-header">
@@ -42,6 +43,7 @@
                     <span class="checkin-text">今日打卡</span>
                     <span class="checkin-subtext">坚持就是胜利！</span>
                 </button>
+                <button class="add-today-training" id="addTodayTraining">💪 记录今日训练</button>
             </section>
 
             <!-- 体重记录卡片 -->
@@ -78,32 +80,33 @@
                 <div class="calendar-legend">
                     <span class="legend-item"><span class="legend-dot checked"></span>已打卡</span>
                     <span class="legend-item"><span class="legend-dot has-weight"></span>有体重</span>
+                    <span class="legend-item"><span class="legend-dot has-train"></span>有训练</span>
                     <span class="legend-item"><span class="legend-dot today"></span>今天</span>
                 </div>
             </section>
 
-            <!-- 统计面板 -->
+            <!-- 当月统计 -->
             <section class="card stats-card">
-                <div class="card-title">📊 本月统计</div>
+                <div class="card-title"><span id="homeStatsTitle">📊 本月统计</span></div>
                 <div class="stats-grid">
                     <div class="stat-item">
-                        <div class="stat-value" id="monthCheckinCount">0</div>
+                        <div class="stat-value" id="homeCheckinCount">0</div>
                         <div class="stat-label">打卡天数</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-value" id="avgWeight">--</div>
+                        <div class="stat-value" id="homeAvgWeight">--</div>
                         <div class="stat-label">平均体重</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-value" id="weightChange">--</div>
+                        <div class="stat-value" id="homeWeightChange">--</div>
                         <div class="stat-label">体重变化</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-value" id="currentStreak">0</div>
-                        <div class="stat-label">连续打卡</div>
+                        <div class="stat-value" id="homeStreak">0</div>
+                        <div class="stat-label">当前连击</div>
                     </div>
                 </div>
-                <!-- 目标进度条 -->
+                <!-- 目标进度条（总进度） -->
                 <div class="goal-progress">
                     <div class="goal-progress-label">
                         <span>🎯 目标进度</span>
@@ -116,6 +119,58 @@
             </section>
         </main>
 
+        <!-- ============ 统计页 ============ -->
+        <main class="main-content page-stats" id="pageStats" style="display:none">
+            <!-- 维度切换 -->
+            <section class="card stats-dim-card">
+                <div class="dim-tabs" id="statsDimTabs">
+                    <button class="dim-tab active" data-dim="month">月</button>
+                    <button class="dim-tab" data-dim="year">年</button>
+                    <button class="dim-tab" data-dim="total">总</button>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="statsCheckinCount">0</div>
+                        <div class="stat-label">打卡天数</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="statsAvgWeight">--</div>
+                        <div class="stat-label">平均体重</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="statsWeightChange">--</div>
+                        <div class="stat-label">体重变化</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="statsStreak">0</div>
+                        <div class="stat-label">当前连击</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 体重曲线 -->
+            <section class="card chart-card">
+                <div class="card-title"><span id="chartTitle">📈 体重曲线</span></div>
+                <div class="chart-canvas-wrap">
+                    <canvas id="weightChartCanvas"></canvas>
+                    <div class="chart-tooltip" id="chartTooltip" style="display:none"></div>
+                </div>
+            </section>
+
+            <!-- 目标总进度 -->
+            <section class="card stats-card">
+                <div class="goal-progress">
+                    <div class="goal-progress-label">
+                        <span>🎯 目标进度</span>
+                        <span id="goalProgressPercent2">0%</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" id="progressBarFill2" style="width: 0%"></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
         <!-- 底部导航 -->
         <nav class="bottom-nav">
             <button class="nav-btn active" data-page="home">🏠 首页</button>
@@ -123,7 +178,7 @@
             <button class="nav-btn" data-page="settings">⚙️ 设置</button>
         </nav>
 
-        <!-- 补签弹窗 -->
+        <!-- 补签/训练弹窗 -->
         <div class="modal-overlay" id="backfillModal" style="display:none">
             <div class="modal">
                 <div class="modal-header">
@@ -138,14 +193,47 @@
                     <div class="modal-row">
                         <label>打卡</label>
                         <div class="modal-checkin-toggle">
-                            <button class="toggle-btn" data-checked="true" id="backfillCheckinToggle">已打卡</button>
+                            <button class="toggle-btn" id="backfillCheckinToggle">未打卡</button>
                         </div>
+                    </div>
+                    <!-- 训练记录 -->
+                    <div class="modal-row">
+                        <label>💪 训练记录</label>
+                        <div class="exercise-list" id="exerciseList">
+                            <!-- 动态生成 -->
+                        </div>
+                        <button class="add-exercise-btn" id="addExerciseBtn">+ 添加训练项</button>
+                    </div>
+                    <!-- 备注 -->
+                    <div class="modal-row">
+                        <label>📝 备注</label>
+                        <textarea class="modal-textarea" id="backfillNote" placeholder="记录今天的感受、饮食、其他..." rows="3"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button class="modal-btn delete-btn" id="backfillDelete" style="display:none">删除</button>
                     <button class="modal-btn cancel-btn" id="backfillCancel">取消</button>
                     <button class="modal-btn save-btn" id="backfillSave">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 新增训练项目弹窗 -->
+        <div class="modal-overlay" id="newExerciseModal" style="display:none">
+            <div class="modal modal-sm">
+                <div class="modal-header">
+                    <span class="modal-title">新增训练项目</span>
+                    <button class="modal-close" id="newExerciseClose">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="modal-row">
+                        <label>项目名称</label>
+                        <input type="text" class="modal-input" id="newExerciseName" placeholder="例如：深蹲、卧推、跑步..." maxlength="10">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="modal-btn cancel-btn" id="newExerciseCancel">取消</button>
+                    <button class="modal-btn save-btn" id="newExerciseSave">添加</button>
                 </div>
             </div>
         </div>
@@ -183,9 +271,7 @@
                     </div>
                     <div class="modal-row theme-section">
                         <label>🎨 配色方案</label>
-                        <div class="palette-grid" id="paletteGrid">
-                            <!-- 预设色板：由JS动态注入 -->
-                        </div>
+                        <div class="palette-grid" id="paletteGrid"></div>
                         <div class="custom-colors">
                             <div class="custom-color-row">
                                 <span class="custom-color-label">主色调</span>
