@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fitness-diary-v3';
+const CACHE_NAME = 'fitness-diary-v4';
 const CACHE_ASSETS = [
     './',
     './index.html',

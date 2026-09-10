@@ -24,7 +24,7 @@ function hexToRgb(hex) {
 }
 
 function rgbToHex({ r, g, b }) {
-    const f = (n) => String(Math.round(Math.max(0, Math.min(255, n)))).padStart(2, '0');
+    const f = (n) => Math.round(Math.max(0, Math.min(255, n))).toString(16).padStart(2, '0');
     return `#${f(r)}${f(g)}${f(b)}`;
 }
 
@@ -799,10 +799,8 @@ const App = {
             list.innerHTML = '<div class="exercise-empty">暂无训练项，点击下方添加</div>';
             return;
         }
-        // 共享的项目名候选列表（所有项目名输入框共用一个 datalist）
-        const datalist = `<datalist id="exerciseNameList">${names.map(n => `<option value="${n}">`).join('')}</datalist>`;
 
-        list.innerHTML = datalist + items.map((ex, i) => {
+        list.innerHTML = items.map((ex, i) => {
             const sets = ex.sets || [];
             const setsHtml = sets.map((s, j) => `
                 <div class="ex-set-row">
@@ -813,19 +811,39 @@ const App = {
                     <button class="set-remove-btn" data-i="${i}" data-j="${j}" title="删除本组">✕</button>
                 </div>
             `).join('');
+            // 已有项目下拉（选择后自动填入上方输入框）
+            const opts = names.map(n => `<option value="${n}">${n}</option>`).join('');
+            const picker = names.length > 0 ? `
+                <select class="ex-name-picker" data-i="${i}">
+                    <option value="">选择已有项目…</option>
+                    ${opts}
+                </select>` : '';
             return `<div class="exercise-item">
                 <div class="ex-name-row">
-                    <input type="text" class="ex-name-input" list="exerciseNameList" data-i="${i}" placeholder="项目名（输入或选择已有）" value="${ex.name || ''}">
+                    <input type="text" class="ex-name-input" data-i="${i}" placeholder="项目名（可直接输入新名称）" value="${ex.name || ''}">
                     <button class="ex-remove-btn" data-i="${i}" title="删除该项目">✕</button>
                 </div>
+                ${picker}
                 <div class="ex-sets-list">${setsHtml}</div>
                 <button class="add-set-btn" data-i="${i}">+ 添加一组</button>
             </div>`;
         }).join('');
 
-        // 项目名输入（可直接输入新项目，也可从已有中选择）
+        // 项目名输入
         list.querySelectorAll('.ex-name-input').forEach(inp => {
             inp.addEventListener('input', () => { this.state.tempExercises[+inp.dataset.i].name = inp.value; });
+        });
+        // 从下拉选择已有项目 → 填入输入框
+        list.querySelectorAll('.ex-name-picker').forEach(sel => {
+            sel.addEventListener('change', () => {
+                const i = +sel.dataset.i;
+                const inp = list.querySelector(`.ex-name-input[data-i="${i}"]`);
+                if (sel.value) {
+                    inp.value = sel.value;
+                    this.state.tempExercises[i].name = sel.value;
+                    sel.value = ''; // 重置，方便再次选择
+                }
+            });
         });
         // 每组重量
         list.querySelectorAll('.set-weight').forEach(inp => inp.addEventListener('input', () => {
